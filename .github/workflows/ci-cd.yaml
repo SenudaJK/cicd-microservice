@@ -15,8 +15,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd cicd-microservice
+          pip install -r requirements.txt
+
       - name: Run tests
         run: |
+          cd cicd-microservice
           echo "Running tests"
           pytest tests/
 
@@ -28,6 +39,7 @@ jobs:
 
       - name: Build image
         run: |
+          cd cicd-microservice
           docker build -t $IMAGE_NAME:${{ github.sha }} .
 
       - name: Trivy Scan
@@ -41,11 +53,15 @@ jobs:
     needs: build-and-scan
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Login to registry
         run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u SenudaJK --password-stdin
 
-      - name: Push image
+      - name: Build and push image
         run: |
+          cd cicd-microservice
+          docker build -t $IMAGE_NAME:${{ github.sha }} .
           docker tag $IMAGE_NAME:${{ github.sha }} ghcr.io/SenudaJK/$IMAGE_NAME:${{ github.sha }}
           docker push ghcr.io/SenudaJK/$IMAGE_NAME:${{ github.sha }}
 
@@ -57,10 +73,12 @@ jobs:
 
       - name: Set image tag
         run: |
+          cd cicd-microservice
           sed -i "s/IMAGE_TAG/${{ github.sha }}/g" k8s/dev/deployment.yaml
 
       - name: Deploy to cluster
         run: |
+          cd cicd-microservice
           kubectl apply -f k8s/dev/
 
   deploy-prod:
@@ -72,6 +90,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Deploy prod
         run: |
+          cd cicd-microservice
           sed -i "s/IMAGE_TAG/${{ github.sha }}/g" k8s/prod/deployment.yaml
           kubectl apply -f k8s/prod/
 
