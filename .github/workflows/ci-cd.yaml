@@ -79,15 +79,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set image tag
+      - name: Set up Minikube
+        uses: medyagh/setup-minikube@latest
+
+      - name: Build image for deployment
         run: |
           cd cicd-microservice
-          sed -i "s/IMAGE_TAG/${{ github.sha }}/g" k8s/dev/deployment.yaml
+          docker build -t $IMAGE_NAME:${{ github.sha }} .
 
-      - name: Deploy to cluster
+      - name: Load image into Minikube
+        run: |
+          minikube image load $IMAGE_NAME:${{ github.sha }}
+          minikube image load ghcr.io/senudajk/$IMAGE_NAME:${{ github.sha }} || true
+
+      - name: Set image tag in deployment
+        run: |
+          cd cicd-microservice
+          sed -i "s|ghcr.io/senudajk/microservice:IMAGE_TAG|$IMAGE_NAME:${{ github.sha }}|g" k8s/dev/deployment.yaml
+
+      - name: Deploy to Minikube cluster
         run: |
           cd cicd-microservice
           kubectl apply -f k8s/dev/
+          kubectl rollout status deployment/microservice -n default --timeout=2m || true
 
   deploy-prod:
     needs: deploy-dev
@@ -96,9 +110,27 @@ jobs:
       name: prod
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy prod
+
+      - name: Set up Minikube
+        uses: medyagh/setup-minikube@latest
+
+      - name: Build image for deployment
         run: |
           cd cicd-microservice
-          sed -i "s/IMAGE_TAG/${{ github.sha }}/g" k8s/prod/deployment.yaml
+          docker build -t $IMAGE_NAME:${{ github.sha }} .
+
+      - name: Load image into Minikube
+        run: |
+          minikube image load $IMAGE_NAME:${{ github.sha }}
+
+      - name: Set image tag in deployment
+        run: |
+          cd cicd-microservice
+          sed -i "s|ghcr.io/senudajk/microservice:IMAGE_TAG|$IMAGE_NAME:${{ github.sha }}|g" k8s/prod/deployment.yaml
+
+      - name: Deploy to Minikube cluster
+        run: |
+          cd cicd-microservice
           kubectl apply -f k8s/prod/
+          kubectl rollout status deployment/microservice -n default --timeout=2m || true
 
