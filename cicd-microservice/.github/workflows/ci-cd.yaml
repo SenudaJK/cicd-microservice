@@ -1,0 +1,77 @@
+name: CI-CD Pipeline
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: microservice
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          echo "Running tests"
+          pytest tests/
+
+  build-and-scan:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          docker build -t $IMAGE_NAME:${{ github.sha }} .
+
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: $IMAGE_NAME:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+  push:
+    needs: build-and-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to registry
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u USERNAME --password-stdin
+
+      - name: Push image
+        run: |
+          docker tag $IMAGE_NAME:${{ github.sha }} ghcr.io/USERNAME/$IMAGE_NAME:${{ github.sha }}
+          docker push ghcr.io/USERNAME/$IMAGE_NAME:${{ github.sha }}
+
+  deploy-dev:
+    needs: push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        run: |
+          sed -i "s/IMAGE_TAG/${{ github.sha }}/g" k8s/dev/deployment.yaml
+
+      - name: Deploy to cluster
+        run: |
+          kubectl apply -f k8s/dev/
+
+  deploy-prod:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy prod
+        run: |
+          sed -i "s/IMAGE_TAG/${{ github.sha }}/g" k8s/prod/deployment.yaml
+          kubectl apply -f k8s/prod/
+
