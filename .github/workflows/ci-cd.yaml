@@ -103,6 +103,20 @@ jobs:
           kubectl apply -f k8s/dev/
           kubectl rollout status deployment/microservice -n default --timeout=2m || true
 
+      - name: Show service status
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployments
+          echo ""
+          echo "=== Service Status ==="
+          kubectl get services
+          echo ""
+          echo "=== Pods Status ==="
+          kubectl get pods
+          echo ""
+          echo "Note: Service is running in GitHub Actions and not directly accessible."
+          echo "To view locally, run Minikube on your machine and use: minikube service microservice-service"
+
   deploy-prod:
     needs: deploy-dev
     runs-on: ubuntu-latest
@@ -133,4 +147,18 @@ jobs:
           cd cicd-microservice
           kubectl apply -f k8s/prod/
           kubectl rollout status deployment/microservice -n default --timeout=2m || true
+
+      - name: Show service status
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployments
+          echo ""
+          echo "=== Service Status ==="
+          kubectl get services
+          echo ""
+          echo "=== Pods Status ==="
+          kubectl get pods
+          echo ""
+          echo "Note: Service is running in GitHub Actions and not directly accessible."
+          echo "To view locally, run Minikube on your machine and use: minikube service microservice-service"
 
