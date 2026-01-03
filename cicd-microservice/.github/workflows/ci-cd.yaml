@@ -42,12 +42,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Login to registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u USERNAME --password-stdin
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u SenudaJK --password-stdin
 
       - name: Push image
         run: |
-          docker tag $IMAGE_NAME:${{ github.sha }} ghcr.io/USERNAME/$IMAGE_NAME:${{ github.sha }}
-          docker push ghcr.io/USERNAME/$IMAGE_NAME:${{ github.sha }}
+          docker tag $IMAGE_NAME:${{ github.sha }} ghcr.io/SenudaJK/$IMAGE_NAME:${{ github.sha }}
+          docker push ghcr.io/SenudaJK/$IMAGE_NAME:${{ github.sha }}
 
   deploy-dev:
     needs: push
